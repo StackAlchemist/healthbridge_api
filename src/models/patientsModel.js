@@ -21,7 +21,7 @@ const patientSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true
-    // hash with bcrypt before saving
+    // Will be hashed with bcrypt before saving
   },
   phone: {
     type: String,
@@ -44,33 +44,52 @@ const patientSchema = new mongoose.Schema({
     enum: ["male", "female", "other"]
   },
 
-  //  Array of medical history records
+  // Appointments array
+  appointments: [
+    {
+      doctorId: { type: mongoose.Schema.Types.ObjectId, ref: "Doctor" },
+      doctorName: { type: String },
+      appointmentDate: { type: Date },
+      appointmentTime: { type: String },
+      appointmentStatus: { 
+        type: String, 
+        enum: ["pending", "confirmed", "cancelled", "attended"], 
+        default: "pending" 
+      }
+    }
+  ],
+
+  // Array of medical history records
   history: [
     {
       complaint: { type: String, required: true },
       description: { type: String },
       diagnostics: { type: String },
       treatments: { type: String },
-      medicines: {
-        usage: { type: String },
-        dosage: { type: String }
-      },
+      medicines: [
+        {
+          name: { type: String },
+          usage: { type: String },
+          dosage: { type: String }
+        }
+      ],
       sideEffects: { type: String },
       precautions: { type: String },
       surgeries: { type: String },
-      practitioner: {
-        id: { type: mongoose.Schema.Types.ObjectId, ref: "Doctor" },
-        name: { type: String, required: true },
-        specialization: { type: String, required: true }
-      },
+      practitioner: { type: mongoose.Schema.Types.ObjectId, ref: "Doctor" },
       date: { type: Date, default: Date.now },
-      status: { type: String, enum: ["pending", "ongoing", "resolved"], default: "pending" },
+      status: { 
+        type: String, 
+        enum: ["pending", "ongoing", "resolved"], 
+        default: "pending" 
+      },
       comments: { type: String, default: "No Comments" }
     }
   ]
 
 }, { timestamps: true });
 
+// Hash password before saving
 patientSchema.pre("save", async function(next) {
   if (!this.isModified("password")) {
     return next();
@@ -80,6 +99,7 @@ patientSchema.pre("save", async function(next) {
   next();
 });
 
+// Static login method
 patientSchema.statics.login = async function(email, password) {
   const patient = await this.findOne({ email });
   if (!patient) {

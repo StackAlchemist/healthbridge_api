@@ -80,23 +80,51 @@ export const getDoctorById = async (req, res) => {
 };
 
 export const searchDoctors = async (req, res) => {
-  const { query } = req.query;
-  const doctors = await Doctor.find({
-    //
-    $or: [
-      { name: { $regex: query, $options: "i" } },
-      { email: { $regex: query, $options: "i" } },
-      { phone: { $regex: query, $options: "i" } },
-      { specialization: { $regex: query, $options: "i" } },
-      { experience: { $regex: query, $options: "i" } },
-      { availableDays: { $regex: query, $options: "i" } },
-      { availableTime: { $regex: query, $options: "i" } },
-      { location: { $regex: query, $options: "i" } },
-      { hospital: { $regex: query, $options: "i" } },
-    ],
-  });
-  res.status(200).json({ doctors });
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ message: "Query parameter is required" });
+    }
+
+    const searchRegex = new RegExp(query, "i");
+
+    const doctors = await Doctor.find({
+      $or: [
+        { name: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
+        { specialization: searchRegex },
+        { availableDays: searchRegex },
+        { location: searchRegex },
+        { "hospital.name": searchRegex },
+        { "hospital.address": searchRegex },
+        { "hospital.email": searchRegex },
+        { "hospital.phone": searchRegex }
+      ],
+      ...(isNaN(query) ? {} : { experience: Number(query) }) // search "experience" if query is number
+    });
+
+    res.status(200).json({
+      doctors: doctors.map((doctor) => ({
+        id: doctor._id,
+        name: doctor.name,
+        email: doctor.email,
+        phone: doctor.phone,
+        specialization: doctor.specialization,
+        experience: doctor.experience,
+        availableDays: doctor.availableDays,
+        availableTime: doctor.availableTime,
+        location: doctor.location,
+        hospital: doctor.hospital,
+        patients: doctor.patients
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
+
 
 export const doctorLogin = async (req, res) => {
   const { email, password } = req.body;
@@ -123,3 +151,20 @@ export const deleteDoctor = async (req, res) => {
 };
 
 
+export const getAppointments = async (req, res) => {
+  try {
+    const appointments = await Doctor.find().appointments;
+  if (!appointments) {
+    return res.status(404).json({ message: "No appointments found" });
+  }
+  res.status(200).json({ appointments: appointments.map((appointment) => ({
+    patientId: appointment.patientId,
+    patientName: appointment.patientName,
+    appointmentDate: appointment.appointmentDate,
+    appointmentTime: appointment.appointmentTime,
+    appointmentStatus: appointment.appointmentStatus
+  })) });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

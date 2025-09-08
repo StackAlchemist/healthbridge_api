@@ -21,7 +21,7 @@ const doctorSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true
-    // hash with bcrypt before saving
+    // Will be hashed before saving
   },
   phone: {
     type: String,
@@ -35,6 +35,8 @@ const doctorSchema = new mongoose.Schema({
     type: Number, // years of experience
     default: 0
   },
+
+  // Availability
   availableDays: {
     type: [String], // e.g. ["Monday", "Wednesday", "Friday"]
     default: []
@@ -43,9 +45,9 @@ const doctorSchema = new mongoose.Schema({
     start: { type: String }, // "09:00"
     end: { type: String }    // "17:00"
   },
-  location: {   
-    type: String
-  },
+
+  // Work info
+  location: { type: String },
   hospital: {
     name: { type: String },
     address: { type: String },
@@ -53,6 +55,22 @@ const doctorSchema = new mongoose.Schema({
     email: { type: String }
   },
 
+  // Appointment records
+  appointments: [
+    {
+      patientId: { type: mongoose.Schema.Types.ObjectId, ref: "Patient" },
+      patientName: { type: String },
+      appointmentDate: { type: Date },
+      appointmentTime: { type: String },
+      appointmentStatus: { 
+        type: String, 
+        enum: ["pending", "confirmed", "cancelled", "attended"], 
+        default: "pending" 
+      }
+    }
+  ],
+
+  // Linked patients (for history/quick lookup)
   patients: [
     {
       patientId: { type: mongoose.Schema.Types.ObjectId, ref: "Patient" },
@@ -62,6 +80,7 @@ const doctorSchema = new mongoose.Schema({
   ]
 }, { timestamps: true });
 
+// Hash password before saving
 doctorSchema.pre("save", async function(next) {
   if (!this.isModified("password")) {
     return next();
@@ -70,6 +89,11 @@ doctorSchema.pre("save", async function(next) {
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
+
+// (Optional) method to check password
+doctorSchema.methods.matchPassword = async function(enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 const Doctor = mongoose.model("Doctor", doctorSchema);
 export default Doctor;
