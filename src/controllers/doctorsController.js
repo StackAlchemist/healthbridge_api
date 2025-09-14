@@ -64,6 +64,7 @@ export const getDoctors = async (req, res) => {
       name: doctor.name,
       email: doctor.email,
       phone: doctor.phone,
+      status: doctor.status,
       specialization: doctor.specialization,
       experience: doctor.experience,
       availableDays: doctor.availableDays,

@@ -46,6 +46,9 @@ const doctorSchema = new mongoose.Schema({
     end: { type: String }    // "17:00"
   },
 
+  status:{
+    type: Boolean
+  },
   // Work info
   location: { type: String },
   hospital: {
