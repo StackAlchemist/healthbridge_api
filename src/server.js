@@ -5,6 +5,7 @@ import patientRoutes from "./routes/patientRoutes.js";
 import doctorRoutes from "./routes/doctorRoutes.js";
 import officialRoutes from "./routes/NHISRoutes.js";
 import cors from "cors";
+import { sendMessage } from "./controllers/twilio.test.js";
 
 dotenv.config();
 const app = express();
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use("/api/patients", patientRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/officials", officialRoutes);
+app.use('/test/reminder', sendMessage);
 
 
 app.listen(PORT, () => {

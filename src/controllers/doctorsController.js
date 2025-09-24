@@ -1,5 +1,6 @@
 import Doctor from "../models/doctorsModel.js";
 import jwt from "jsonwebtoken";
+import Patient from "../models/patientsModel.js";
 
 const maxAge = 3 * 24 * 60 * 60 * 1000; // 3 days
 const createToken = (id) => {
@@ -118,7 +119,14 @@ export const searchDoctors = async (req, res) => {
         availableTime: doctor.availableTime,
         location: doctor.location,
         hospital: doctor.hospital,
-        patients: doctor.patients
+        patients: doctor.patients,
+        appointments: doctor.appointments.map((appointment) => ({
+          patientId: appointment.patientId,
+          patientName: appointment.patientName,
+          appointmentDate: appointment.appointmentDate,
+          appointmentTime: appointment.appointmentTime,
+          appointmentStatus: appointment.appointmentStatus
+        }))
       }))
     });
   } catch (error) {
@@ -167,5 +175,121 @@ export const getAppointments = async (req, res) => {
   })) });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const approveAppointment = async (req, res) => {
+  try {
+    const { id: doctorId, appointmentId } = req.params;
+
+    // 1. Find doctor
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    // 2. Find appointment in doctor's record
+    const appointment = doctor.appointments.id(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    // 3. Validate status transition
+    if (appointment.appointmentStatus === "confirmed") {
+      return res.status(400).json({ message: "Appointment is already confirmed" });
+    }
+    if (appointment.appointmentStatus === "cancelled") {
+      return res.status(400).json({ message: "Cannot approve a cancelled appointment" });
+    }
+
+    // 4. Update doctor's appointment
+    appointment.appointmentStatus = "confirmed";
+    await doctor.save();
+
+    // 5. Update patient's appointment (keep both sides in sync)
+    await Patient.updateOne(
+      { _id: appointment.patientId, "appointments._id": appointmentId },
+      { $set: { "appointments.$.appointmentStatus": "confirmed" } }
+    );
+
+    res.status(200).json({
+      message: "Appointment approved successfully ✅",
+      appointment: {
+        appointmentId: appointment._id,
+        patientId: appointment.patientId,
+        appointmentDate: appointment.appointmentDate,
+        appointmentTime: appointment.appointmentTime,
+        appointmentStatus: appointment.appointmentStatus,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const cancelAppointment = async (req, res) => {
+  try {
+    const { id: doctorId, appointmentId } = req.params;
+
+    // Find doctor
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    // Locate appointment in doctor record
+    const appointment = doctor.appointments.id(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    // Check if it's already cancelled or attended
+    if (appointment.appointmentStatus === "attended") {
+      return res
+        .status(400)
+        .json({ message: "Cannot cancel an attended appointment" });
+    }
+    if (appointment.appointmentStatus === "cancelled") {
+      return res
+        .status(400)
+        .json({ message: "Appointment is already cancelled" });
+    }
+
+    // Update doctor appointment
+    appointment.appointmentStatus = "cancelled";
+    await doctor.save();
+
+    // Sync with patient record
+    if (appointment.patientId) {
+      const patient = await Patient.findById(appointment.patientId);
+      if (patient) {
+        const patientAppt = patient.appointments.find(
+          (appt) =>
+            appt.doctorId.toString() === doctor._id.toString() &&
+            appt.appointmentDate.getTime() ===
+              appointment.appointmentDate.getTime() &&
+            appt.appointmentTime === appointment.appointmentTime
+        );
+        if (patientAppt) {
+          patientAppt.appointmentStatus = "cancelled";
+          await patient.save();
+        }
+      }
+    }
+
+    res.status(200).json({
+      message: "Appointment cancelled successfully",
+      appointment: {
+        appointmentId: appointment._id,
+        patientId: appointment.patientId,
+        appointmentDate: appointment.appointmentDate,
+        appointmentTime: appointment.appointmentTime,
+        appointmentStatus: appointment.appointmentStatus,
+      },
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };

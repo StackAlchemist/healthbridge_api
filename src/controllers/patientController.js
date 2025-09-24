@@ -1,6 +1,9 @@
 import Doctor from "../models/doctorsModel.js";
 import Patient from "../models/patientsModel.js";
 import jwt from "jsonwebtoken";
+import twilio from "twilio"
+import dotenv from "dotenv";
+dotenv.config();
 
 const maxAge = 3 * 24 * 60 * 60 * 1000; // 3 days
 const createToken = (id) => {
@@ -218,5 +221,52 @@ export const cancelAppointment = async (req, res) => {
   } catch (error) {
     console.error("Error cancelling appointment:", error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const sendMessage = async (req, res) => {
+  try {
+    const { patientId } = req.body;
+
+    // Await the DB query
+    const patient = await Patient.findById(patientId);
+
+    if (!patient) {
+      return res.status(404).json({ error: "Patient not found" });
+    }
+    if (!patient.phone) {
+      return res.status(400).json({ error: "Patient phone number is missing" });
+    }
+
+    let patientPhoneNumber = patient.phone.toString().trim();
+
+    // Handle Nigerian numbers
+    let formattedNumber;
+    if (patientPhoneNumber.startsWith("0")) {
+      formattedNumber = "+234" + patientPhoneNumber.slice(1);
+    } else if (patientPhoneNumber.startsWith("+234")) {
+      formattedNumber = patientPhoneNumber;
+    } else {
+      formattedNumber = "+234" + patientPhoneNumber;
+    }
+
+    console.log("Formatted:", formattedNumber);
+
+    const accountSid = process.env.TWILIO_ACCT_SID;  
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const client = twilio(accountSid, authToken);
+
+    const message = await client.messages.create({
+      body: "Test 2",
+      messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
+      to: formattedNumber,
+    });
+
+    console.log("Message SID:", message.sid);
+    res.json({ success: true, sid: message.sid });
+
+  } catch (error) {
+    console.error("Twilio error:", error.message);
+    res.status(400).json({ error: error.message });
   }
 };
