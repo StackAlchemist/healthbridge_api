@@ -229,47 +229,50 @@ export const approveAppointment = async (req, res) => {
 
 export const cancelAppointment = async (req, res) => {
   try {
-    const { id: doctorId, appointmentId } = req.params;
+    const { doctorId, appointmentId } = req.body;
 
-    // Find doctor
+    if (!doctorId || !appointmentId) {
+      return res.status(400).json({ message: "doctorId and appointmentId are required" });
+    }
+
+    //  Find doctor
     const doctor = await Doctor.findById(doctorId);
     if (!doctor) {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    // Locate appointment in doctor record
+    //  Find appointment inside doctor's record
     const appointment = doctor.appointments.id(appointmentId);
     if (!appointment) {
-      return res.status(404).json({ message: "Appointment not found" });
+      return res.status(404).json({ message: "Appointment not found for doctor" });
     }
 
-    // Check if it's already cancelled or attended
+    // Prevent cancelling attended/cancelled appointments
     if (appointment.appointmentStatus === "attended") {
-      return res
-        .status(400)
-        .json({ message: "Cannot cancel an attended appointment" });
+      return res.status(400).json({ message: "Cannot cancel an attended appointment" });
     }
     if (appointment.appointmentStatus === "cancelled") {
-      return res
-        .status(400)
-        .json({ message: "Appointment is already cancelled" });
+      return res.status(400).json({ message: "Appointment is already cancelled" });
     }
 
-    // Update doctor appointment
+    //  Update appointment in doctor's record
     appointment.appointmentStatus = "cancelled";
     await doctor.save();
 
-    // Sync with patient record
+    //  Sync with patient's record
     if (appointment.patientId) {
       const patient = await Patient.findById(appointment.patientId);
       if (patient) {
         const patientAppt = patient.appointments.find(
           (appt) =>
-            appt.doctorId.toString() === doctor._id.toString() &&
-            appt.appointmentDate.getTime() ===
-              appointment.appointmentDate.getTime() &&
-            appt.appointmentTime === appointment.appointmentTime
+            appt._id.toString() === appointment._id.toString() ||
+            (
+              appt.doctorId.toString() === doctor._id.toString() &&
+              appt.appointmentDate.getTime() === appointment.appointmentDate.getTime() &&
+              appt.appointmentTime === appointment.appointmentTime
+            )
         );
+
         if (patientAppt) {
           patientAppt.appointmentStatus = "cancelled";
           await patient.save();
@@ -277,6 +280,7 @@ export const cancelAppointment = async (req, res) => {
       }
     }
 
+    //  Send success response
     res.status(200).json({
       message: "Appointment cancelled successfully",
       appointment: {
@@ -287,9 +291,9 @@ export const cancelAppointment = async (req, res) => {
         appointmentStatus: appointment.appointmentStatus,
       },
     });
+
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+    console.error("Error cancelling appointment:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

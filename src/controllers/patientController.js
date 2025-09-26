@@ -96,12 +96,16 @@ export const patientLogout = async (req, res) =>{
 
 export const bookAppointment = async (req, res) => {
   try {
-    const { doctorId, appointmentDate, appointmentTime, userId } = req.body;
+    const { doctorId, appointmentDate, appointmentTime, userId, complaint } = req.body;
 
     // 1. Validate input
-    if (!doctorId || !appointmentDate || !appointmentTime || !userId) {
+    if (!doctorId || !appointmentDate || !appointmentTime || !userId || !complaint) {
+      // console.log({
+      //   "doctorId": doctorId,
+        
+      // })
       return res.status(400).json({ 
-        message: "Missing required appointment details: doctorId, appointmentDate, appointmentTime, userId" 
+        message: "Missing required appointment details: doctorId, appointmentDate, appointmentTime, userId, complaint" 
       });
     }
 
@@ -163,6 +167,7 @@ export const bookAppointment = async (req, res) => {
     const newAppointment = {
       doctorId: doctor._id,
       doctorName: doctor.name,
+      complaint,
       appointmentDate: dateObj,
       appointmentTime,
       appointmentStatus: "pending"
@@ -171,6 +176,7 @@ export const bookAppointment = async (req, res) => {
     const doctorAppointment = {
       patientId: patient._id,
       patientName: patient.name,
+      patientComplaint: complaint,
       appointmentDate: dateObj,
       appointmentTime,
       appointmentStatus: "pending"
@@ -213,11 +219,58 @@ export const getAppointments = async (req, res) => {
   }
 };
 
+export const approveAppointment = async(req, res)=>{
+try {
+  
+} catch (error) {
+  
+}
+}
+
 export const cancelAppointment = async (req, res) => {
   try {
-    const { appointmentId } = req.body;
-    const appointment = await Appointment.findByIdAndUpdate(appointmentId, { appointmentStatus: "cancelled" });
-    res.status(200).json({ message: "Appointment cancelled successfully" });
+    const { patientId, doctorId, appointmentId } = req.body;
+
+    // Find the patient
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    // Locate appointment in patient's array
+    const patientAppointment = patient.appointments.id(appointmentId);
+    if (!patientAppointment) {
+      return res.status(404).json({ message: "Appointment not found for patient" });
+    }
+
+    // Update patient appointment
+    patientAppointment.appointmentStatus = "cancelled";
+    await patient.save();
+
+    //  Reflect same update on doctor's record
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    const doctorAppointment = doctor.appointments.id(appointmentId);
+    if (doctorAppointment) {
+      doctorAppointment.appointmentStatus = "cancelled";
+      await doctor.save();
+    }
+
+    // Send response
+    res.status(200).json({
+      message: "Appointment cancelled successfully",
+      appointment: {
+        appointmentId: patientAppointment._id,
+        doctorId: patientAppointment.doctorId,
+        doctorName: patientAppointment.doctorName,
+        appointmentDate: patientAppointment.appointmentDate,
+        appointmentTime: patientAppointment.appointmentTime,
+        appointmentStatus: patientAppointment.appointmentStatus,
+      },
+    });
   } catch (error) {
     console.error("Error cancelling appointment:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -268,5 +321,32 @@ export const sendMessage = async (req, res) => {
   } catch (error) {
     console.error("Twilio error:", error.message);
     res.status(400).json({ error: error.message });
+  }
+};
+
+export const listDoctors = async (req, res) => {
+  try {
+    const doctors = await Doctor.find(); // get all doctors
+    res.status(200).json(doctors);
+  } catch (error) {
+    console.error("Error listing doctors:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Get a single doctor by ID
+export const getDoctorById = async (req, res) => {
+  try {
+    const { doctorId } = req.body;
+
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    res.status(200).json(doctor);
+  } catch (error) {
+    console.error("Error fetching doctor:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

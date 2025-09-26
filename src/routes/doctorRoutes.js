@@ -10,7 +10,7 @@ router.get("/get/:id", getDoctorById);
 router.delete("/delete/:id", deleteDoctor);
 router.post("/login", doctorLogin);
 router.post("/search", searchDoctors);
-router.post("/cancel-appointment/:id/:appointmentId", cancelAppointment);
+router.post("/cancel-appointment", cancelAppointment);
 router.post("/approve-appointment/:id/:appointmentId", approveAppointment);
 
 export default router;

@@ -63,6 +63,7 @@ const doctorSchema = new mongoose.Schema({
     {
       patientId: { type: mongoose.Schema.Types.ObjectId, ref: "Patient" },
       patientName: { type: String },
+      patientComplaint: {type: String},
       appointmentDate: { type: Date },
       appointmentTime: { type: String },
       appointmentStatus: { 
