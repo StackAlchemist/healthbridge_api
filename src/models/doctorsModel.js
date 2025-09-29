@@ -94,10 +94,16 @@ doctorSchema.pre("save", async function(next) {
   next();
 });
 
-// (Optional) method to check password
-doctorSchema.methods.matchPassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+doctorSchema.statics.login = async function(email, password) {
+  const patient = await this.findOne({ email });
+  if (!patient) {
+    throw new Error("Invalid email");
+  }
+  const match = await bcrypt.compare(password, patient.password);
+  if (!match) {
+    throw new Error("Invalid password");
+  }
+  return patient;
 };
-
 const Doctor = mongoose.model("Doctor", doctorSchema);
 export default Doctor;

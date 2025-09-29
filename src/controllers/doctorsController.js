@@ -7,6 +7,26 @@ const createToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: maxAge });
 };
 
+
+const handleErrors = (err) => {
+  let errors = { name: "", email: "", password: "" };
+
+  // Duplicate email error
+  if (err.code === 11000) {
+    errors.email = "Email already exists";
+    return errors;
+  }
+
+  // Validation errors
+  if (err.message.includes("UserAuth validation failed")) {
+    Object.values(err.errors).forEach(({ properties }) => {
+      errors[properties.path] = properties.message;
+    });
+  }
+
+  return errors;
+};
+
 export const createDoctor = async (req, res) => {
   const {
     name,
@@ -137,16 +157,23 @@ export const searchDoctors = async (req, res) => {
 
 export const doctorLogin = async (req, res) => {
   const { email, password } = req.body;
-  const doctor = await Doctor.login(email, password);
-  const token = createToken(doctor._id);
-  res.cookie('jwt', token, { httpOnly: true, maxAge: maxAge*1000 });
-  res.status(200).json({ doctor:{
-    id: doctor._id,
-    name: doctor.name,
-    email: doctor.email,
-    phone: doctor.phone,
-    specialization: doctor.specialization,
-  }, token, message: "Login successful" });
+  try {
+    const doctor = await Doctor.login(email, password);
+    const token = createToken(doctor._id);
+    res.cookie('jwt', token, { httpOnly: true, maxAge: maxAge*1000});
+    res.status(200).json({ doctor:{
+      id: doctor._id,
+      name: doctor.name,
+      email: doctor.email,
+      phone: doctor.phone,
+      specialization: doctor.specialization,
+    }, token, message: "Login successful"});
+
+  } catch (err) {
+    console.log(err)
+    const errors = handleErrors(err);
+    res.status(400).json({ errors });
+  }
 };
 
 // export const updateDoctor = async (req, res) => {
