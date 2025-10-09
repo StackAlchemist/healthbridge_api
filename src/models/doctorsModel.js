@@ -36,6 +36,20 @@ const doctorSchema = new mongoose.Schema({
     default: 0
   },
 
+  description: {
+    type: String,
+    required: true
+  },
+
+  fee: {
+    type: Number,
+    required: true
+  },
+
+  img: {
+    type: String,
+    required: true
+  },
   // Availability
   availableDays: {
     type: [String], // e.g. ["Monday", "Wednesday", "Friday"]

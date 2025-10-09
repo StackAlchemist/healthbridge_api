@@ -189,6 +189,8 @@ export const bookAppointment = async (req, res) => {
     doctor.appointments.push(doctorAppointment);
     await doctor.save();
 
+    
+
     res.status(201).json({
       message: "Appointment booked successfully",
       appointment: newAppointment

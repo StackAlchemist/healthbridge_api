@@ -1,6 +1,7 @@
 import Doctor from "../models/doctorsModel.js";
 import jwt from "jsonwebtoken";
 import Patient from "../models/patientsModel.js";
+import cloudinary from "../config/cloudinary.js";
 
 const maxAge = 3 * 24 * 60 * 60 * 1000; // 3 days
 const createToken = (id) => {
@@ -28,55 +29,83 @@ const handleErrors = (err) => {
 };
 
 export const createDoctor = async (req, res) => {
-  const {
-    name,
-    email,
-    password,
-    phone,
-    specialization,
-    experience,
-    availableDays,
-    availableTime,
-    location,
-    hospital,
-  } = req.body;
-  const doctor = new Doctor({
-    name,
-    email,
-    password,
-    phone,
-    specialization,
-    experience,
-    availableDays,
-    availableTime,
-    location,
-    hospital,
-  });
-  await doctor.save();
-  const token = createToken(doctor._id);
-  res.cookie('jwt', token, { httpOnly: true, maxAge: maxAge*1000 });
-  res.status(201).json({
-    message: "Doctor created successfully",
-    token,
-    doctor: {
-      id: doctor._id,
-      name: doctor.name,
-      email: doctor.email,
-      phone: doctor.phone,
-      specialization: doctor.specialization,
-      experience: doctor.experience,
-      availableDays: doctor.availableDays,
-      availableTime: doctor.availableTime,
-      location: doctor.location,
-      hospital: {
-        name: doctor.hospital.name,
-        address: doctor.hospital.address,
-        phone: doctor.hospital.phone,
-        email: doctor.hospital.email,
+  try {
+    const {
+      name,
+      email,
+      password,
+      phone,
+      specialization,
+      experience,
+      description,
+      fee,
+      availableDays,
+      availableTimeStart,
+      availableTimeEnd,
+      location,
+      hospitalName,
+      hospitalAddress,
+      hospitalPhone,
+      hospitalEmail,
+    } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No image uploaded" });
+    }
+
+    // ✅ Upload to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+      folder: "doctors",
+    });
+
+    // ✅ Create doctor entry
+    const doctor = new Doctor({
+      name,
+      email,
+      password,
+      phone,
+      specialization,
+      experience,
+      description,
+      fee,
+      img: uploadResult.secure_url,
+      availableDays: availableDays.split(",").map((d) => d.trim()),
+      availableTime: {
+        start: availableTimeStart,
+        end: availableTimeEnd,
       },
-    },
-  });
+      location,
+      hospital: {
+        name: hospitalName,
+        address: hospitalAddress,
+        phone: hospitalPhone,
+        email: hospitalEmail,
+      },
+      status: false,
+    });
+
+    await doctor.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Doctor created successfully",
+      doctor,
+    });
+  } catch (error) {
+    console.error("Error creating doctor:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
 };
+
+// export const getAppointments = async (req, res) => {
+//   const appointments = await Doctor.find().appointments;
+//   res.status(200).json({ appointments });
+// };
+
 
 export const getDoctors = async (req, res) => {
   const doctors = await Doctor.find();
@@ -88,10 +117,13 @@ export const getDoctors = async (req, res) => {
       status: doctor.status,
       specialization: doctor.specialization,
       experience: doctor.experience,
+      description: doctor.description,
       availableDays: doctor.availableDays,
       availableTime: doctor.availableTime,
       location: doctor.location,
       hospital: doctor.hospital,
+      fee: doctor.fee,
+      img: doctor.img
     })),
   });
 };
@@ -135,10 +167,12 @@ export const searchDoctors = async (req, res) => {
         phone: doctor.phone,
         specialization: doctor.specialization,
         experience: doctor.experience,
+        description: doctor.description,
         availableDays: doctor.availableDays,
         availableTime: doctor.availableTime,
         location: doctor.location,
         hospital: doctor.hospital,
+        fee: doctor.fee,
         patients: doctor.patients,
         appointments: doctor.appointments.map((appointment) => ({
           patientId: appointment.patientId,
@@ -167,6 +201,8 @@ export const doctorLogin = async (req, res) => {
       email: doctor.email,
       phone: doctor.phone,
       specialization: doctor.specialization,
+      description: doctor.description,
+      fee: doctor.fee,
     }, token, message: "Login successful"});
 
   } catch (err) {
