@@ -86,6 +86,48 @@ const patientSchema = new mongoose.Schema({
       },
       comments: { type: String, default: "No Comments" }
     }
+  ],
+
+  biodata: [
+    {
+    weight: { 
+      type: Number, 
+      min: 0,
+      required: false,
+      // Best Practice: Store in smallest unit (e.g., grams) or standard (kg)
+      // Comment: Stored in KG
+    },
+    height: { 
+      type: Number, 
+      min: 0,
+      required: false,
+      // Comment: Stored in CM
+    },
+    bloodGroup: { 
+      type: String, 
+      enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], // Restricts to valid types
+      uppercase: true // Automatically capitalizes input
+    },
+    // arrays allow you to store multiple items cleanly
+    allergies: [{ 
+      type: String, 
+      trim: true 
+    }], 
+    // Using an object array for medications allows for dosage details later
+    medications: [{
+      name: { type: String, required: true },
+      dosage: { type: String }, // e.g., "500mg"
+      frequency: { type: String } // e.g., "Twice daily"
+    }],
+    medicalConditions: [{ 
+      type: String, 
+      trim: true 
+    }],
+    lastUpdated: { 
+      type: Date, 
+      default: Date.now 
+    }
+    }
   ]
 
 }, { timestamps: true });

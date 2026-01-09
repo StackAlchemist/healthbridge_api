@@ -352,3 +352,38 @@ export const getDoctorById = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+export const updateBiodata = async (req, res) => {
+  try {
+    const { patientId, biodata } = req.body;
+
+    // Use findByIdAndUpdate with $push because biodata is an array []
+    const updatedPatient = await Patient.findByIdAndUpdate(
+      patientId,
+      { 
+        $push: { 
+          biodata: {
+            weight: biodata.weight,
+            height: biodata.height,
+            bloodGroup: biodata.bloodGroup,
+            allergies: biodata.allergies || [],
+            medications: biodata.medications || [],
+            medicalConditions: biodata.medicalConditions || []
+          } 
+        } 
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedPatient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    res.status(200).json({ 
+      message: "Biodata history updated", 
+      currentBiodata: updatedPatient.biodata[updatedPatient.biodata.length - 1] 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
