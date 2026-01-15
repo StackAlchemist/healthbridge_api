@@ -312,7 +312,7 @@ export const sendMessage = async (req, res) => {
     const client = twilio(accountSid, authToken);
 
     const message = await client.messages.create({
-      body: "Test 2",
+      body: "Appointment reminder: You have an appointment with Dr. " + doctor.name + " on " + patient.appointmentDate + " at " + patient.appointmentTime,
       messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
       to: formattedNumber,
     });
@@ -387,3 +387,5 @@ export const updateBiodata = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+

@@ -49,27 +49,25 @@ export const createDoctor = async (req, res) => {
       hospitalEmail,
     } = req.body;
 
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: "No image uploaded" });
+    // 1. Handle availableDays (Fixes the ".split is not a function" error)
+    let processedDays = [];
+    if (availableDays) {
+      processedDays = Array.isArray(availableDays)
+        ? availableDays
+        : availableDays.split(",").map((d) => d.trim());
     }
 
-    // ✅ Upload to Cloudinary
-    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-      folder: "doctors",
-    });
-
-    // ✅ Create doctor entry
-    const doctor = new Doctor({
+    // 2. Prepare the data object
+    const doctorData = {
       name,
       email,
       password,
       phone,
       specialization,
-      experience,
+      experience: experience || 0,
       description,
       fee,
-      img: uploadResult.secure_url,
-      availableDays: availableDays.split(",").map((d) => d.trim()),
+      availableDays: processedDays,
       availableTime: {
         start: availableTimeStart,
         end: availableTimeEnd,
@@ -82,8 +80,19 @@ export const createDoctor = async (req, res) => {
         email: hospitalEmail,
       },
       status: false,
-    });
+    };
 
+    // 3. Optional Image Upload (Cloudinary)
+    // If no file is uploaded, Mongoose uses the default URL from your model
+    if (req.file) {
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: "doctors",
+      });
+      doctorData.img = uploadResult.secure_url;
+    }
+
+    // 4. Save to Database
+    const doctor = new Doctor(doctorData);
     await doctor.save();
 
     res.status(201).json({
@@ -93,6 +102,15 @@ export const createDoctor = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating doctor:", error);
+
+    // Handle Mongoose Unique Email Error
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists",
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Server error",

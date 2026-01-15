@@ -48,7 +48,8 @@ const doctorSchema = new mongoose.Schema({
 
   img: {
     type: String,
-    required: true
+    default: "https://via.placeholder.com/150",
+    required: false
   },
   // Availability
   availableDays: {
@@ -84,6 +85,10 @@ const doctorSchema = new mongoose.Schema({
         type: String, 
         enum: ["pending", "confirmed", "cancelled", "attended"], 
         default: "pending" 
+      },
+      reminderSent: {
+        type: Boolean,
+        default: false
       }
     }
   ],

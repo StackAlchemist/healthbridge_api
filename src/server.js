@@ -6,6 +6,7 @@ import doctorRoutes from "./routes/doctorRoutes.js";
 import officialRoutes from "./routes/NHISRoutes.js";
 import cors from "cors";
 import { sendMessage } from "./controllers/twilio.test.js";
+import "./cron/appointmentReminder.js";
 
 dotenv.config();
 const app = express();

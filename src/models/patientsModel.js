@@ -56,6 +56,10 @@ const patientSchema = new mongoose.Schema({
         type: String, 
         enum: ["pending", "confirmed", "cancelled", "attended"], 
         default: "pending" 
+      },
+      reminderSent: {
+        type: Boolean,
+        default: false
       }
     }
   ],
