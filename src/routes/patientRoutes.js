@@ -8,7 +8,7 @@ router.post("/login", patientLogin);
 router.post("/book-appointment", bookAppointment);
 router.get("/get-appointments", getAppointments);
 router.post("/cancel-appointment", cancelAppointment);
-router.post("/list-doctors", listDoctors)
+router.get("/list-doctors", listDoctors)
 router.get("/getDoctor", getDoctorById)
 router.post("/reminder", sendMessage)
 router.post("/update-biodata", updateBiodata)
