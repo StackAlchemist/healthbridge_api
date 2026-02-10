@@ -240,20 +240,36 @@ export const deleteDoctor = async (req, res) => {
   res.status(200).json({ message: "Doctor deleted successfully" });
 };
 
+export const getApppointsByDoctorId = async (req, res) => {
+
+}
+
 
 export const getAppointments = async (req, res) => {
   try {
-    const appointments = await Doctor.find().appointments;
-  if (!appointments) {
-    return res.status(404).json({ message: "No appointments found" });
-  }
-  res.status(200).json({ appointments: appointments.map((appointment) => ({
-    patientId: appointment.patientId,
-    patientName: appointment.patientName,
-    appointmentDate: appointment.appointmentDate,
-    appointmentTime: appointment.appointmentTime,
-    appointmentStatus: appointment.appointmentStatus
-  })) });
+    const { doctorId } = req.body; 
+    
+    // Find the doctor by ID
+    const doctor = await Doctor.findById(doctorId);
+    
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+    
+    // Check if doctor has appointments
+    if (!doctor.appointments || doctor.appointments.length === 0) {
+      return res.status(404).json({ message: "No appointments found" });
+    }
+    
+    res.status(200).json({ 
+      appointments: doctor.appointments.map((appointment) => ({
+        patientId: appointment.patientId,
+        patientName: appointment.patientName,
+        appointmentDate: appointment.appointmentDate,
+        appointmentTime: appointment.appointmentTime,
+        appointmentStatus: appointment.appointmentStatus
+      })) 
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
