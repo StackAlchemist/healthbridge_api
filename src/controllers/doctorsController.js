@@ -263,6 +263,7 @@ export const getAppointments = async (req, res) => {
     
     res.status(200).json({ 
       appointments: doctor.appointments.map((appointment) => ({
+        appointmentId: appointment._id,
         patientId: appointment.patientId,
         patientName: appointment.patientName,
         appointmentDate: appointment.appointmentDate,

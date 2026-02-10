@@ -38,12 +38,12 @@ const doctorSchema = new mongoose.Schema({
 
   description: {
     type: String,
-    required: true
+    required: false //SET TO FALSE FOR TESTING
   },
 
   fee: {
     type: Number,
-    required: true
+    required: false //SET TO FALSE FOR TESTING
   },
 
   img: {
