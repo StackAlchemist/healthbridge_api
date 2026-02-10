@@ -388,4 +388,17 @@ export const updateBiodata = async (req, res) => {
   }
 };
 
-
+export const getBiodata = async (req, res) => {
+  try {
+    const { patientId } = req.body;
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    res.status(200).json(patient.biodata);
+  }
+  catch (error) {
+    console.error("Error getting biodata:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+}
