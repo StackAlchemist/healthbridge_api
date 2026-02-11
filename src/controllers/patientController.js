@@ -204,7 +204,7 @@ export const bookAppointment = async (req, res) => {
 
 export const getAppointments = async (req, res) => {
   try {
-    const userId = req.body.userId;
+    const userId = req.query.userId || req.params.userId || req.body.userId;
     const patient = await Patient.findById(userId);
     if (!patient) {
       return res.status(404).json({ message: "Patient not found" });
