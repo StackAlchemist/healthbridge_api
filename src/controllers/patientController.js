@@ -31,7 +31,7 @@ const handleErrors = (err) => {
 
 export const patientSignup = async (req, res) => {
   console.log(req.body);
-  const { name, email, password, phone, address, city, state, age, gender } =
+  const { name, email, password, phone, address, city, state, dob, gender } =
     req.body;
   const patient = new Patient({
     name,
@@ -41,7 +41,7 @@ export const patientSignup = async (req, res) => {
     address,
     city,
     state,
-    age,
+    dob,
     gender,
   });
   await patient.save();
@@ -58,7 +58,7 @@ export const patientSignup = async (req, res) => {
       address: patient.address,
       city: patient.city,
       state: patient.state,
-      age: patient.age,
+      dob: patient.dob,
       gender: patient.gender,
     },
   });
@@ -74,6 +74,12 @@ export const patientLogin = async (req, res) => {
         id: patient._id,
         name: patient.name,
         email: patient.email,
+        phone: patient.phone,
+        address: patient.address,
+        city: patient.city,
+        state: patient.state,
+        dob: patient.dob,
+        gender: patient.gender,
     }, token, message: "Login successful" });
 
   } catch (err) {

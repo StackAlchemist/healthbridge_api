@@ -34,9 +34,9 @@ const patientSchema = new mongoose.Schema({
     type: String
   },
   state: {
-    type: String
+    type: Date
   },
-  age: {
+  dob: {
     type: Number
   },
   gender: {
