@@ -395,3 +395,29 @@ export const cancelAppointment = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+export const docDetails = async (req, res) => {
+  try {
+    // Accept doctorId from body, params, or query
+    const doctorId =
+      req.body?.doctorId || req.params?.doctorId || req.query?.doctorId;
+
+    if (!doctorId) {
+      return res.status(400).json({ message: "Doctor ID is required" });
+    }
+
+    // Find the doctor by ID, exclude password field
+    const doctor = await Doctor.findById(doctorId).select("-password");
+    
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    res.status(200).json({
+      doctor
+    });
+  } catch (error) {
+    console.error("Error fetching doctor details:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
