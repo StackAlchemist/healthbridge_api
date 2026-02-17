@@ -8,6 +8,9 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
+// 🔒 Prevent overlapping executions
+let isRunning = false;
+
 /**
  * Helper function to send a reminder for a single appointment
  */
@@ -26,7 +29,7 @@ const sendReminder = async (patient, appointment) => {
       phone.startsWith("+234") ? phone :
       "+234" + phone;
 
-    // Combine date + time into ONE datetime
+    // Combine date + time
     const appointmentDateTime = new Date(
       `${appointment.appointmentDate.toISOString().split("T")[0]}T${appointment.appointmentTime}:00`
     );
@@ -37,9 +40,8 @@ const sendReminder = async (patient, appointment) => {
       minute: "2-digit"
     });
 
-    console.log(`📤 Sending reminder to ${patient.name} at ${formatted} for ${dateString} ${timeString}`);
+    console.log(`📤 Sending reminder to ${patient.name} at ${formatted}`);
 
-    // Send SMS and capture Twilio response
     const msg = await client.messages.create({
       body: `Hello ${patient.name} 👋
 Appointment Confirmed 🏥
@@ -51,18 +53,18 @@ Please arrive 10 mins early.`,
       to: formatted
     });
 
-    console.log(`📬 Twilio response for ${patient.name}:`, {
+    console.log(`📬 Twilio response:`, {
       sid: msg.sid,
       status: msg.status,
       errorCode: msg.errorCode,
       errorMessage: msg.errorMessage
     });
 
-    // Mark reminder as sent (PATIENT SIDE)
+    // Mark reminder as sent (Patient side)
     appointment.reminderSent = true;
     await patient.save();
 
-    // Sync reminder on DOCTOR SIDE
+    // Sync Doctor side
     const doctorAppointment = doctor.appointments.find(
       appt =>
         appt.patientId?.toString() === patient._id.toString() &&
@@ -75,27 +77,34 @@ Please arrive 10 mins early.`,
       await doctor.save();
     }
 
-    console.log(`✅ Reminder successfully logged for ${patient.name}`);
+    console.log(`✅ Reminder logged for ${patient.name}`);
   } catch (err) {
     console.error(`❌ Failed reminder for ${patient.name}:`, err.message);
   }
 };
 
 /**
- * Cron job: Runs every minute
+ * 🔔 Cron job: Runs every minute
  * Sends reminders exactly 1 hour before appointment time
  */
 cron.schedule("* * * * *", async () => {
+
+  if (isRunning) {
+    console.log("⏳ Previous reminder job still running. Skipping this cycle.");
+    return;
+  }
+
+  isRunning = true;
+  const startTime = Date.now();
+
   console.log("⏰ Running appointment reminder job...");
 
   try {
     const now = new Date();
 
-    // 1 hour window
     const oneHourFromNowStart = new Date(now.getTime() + 60 * 60 * 1000);
     const oneHourFromNowEnd = new Date(oneHourFromNowStart.getTime() + 60 * 1000);
 
-    // Get patients with pending/confirmed appointments
     const patients = await Patient.find({
       "appointments.appointmentStatus": { $in: ["pending", "confirmed"] },
       "appointments.reminderSent": false
@@ -110,6 +119,7 @@ cron.schedule("* * * * *", async () => {
 
     for (const patient of patients) {
       for (const appointment of patient.appointments) {
+
         if (
           appointment.reminderSent ||
           appointment.appointmentStatus === "cancelled" ||
@@ -120,8 +130,11 @@ cron.schedule("* * * * *", async () => {
           `${appointment.appointmentDate.toISOString().split("T")[0]}T${appointment.appointmentTime}:00`
         );
 
-        if (appointmentDateTime >= oneHourFromNowStart && appointmentDateTime < oneHourFromNowEnd) {
-          console.log(`⏱ Appointment matched for reminder: ${patient.name} at ${appointmentDateTime}`);
+        if (
+          appointmentDateTime >= oneHourFromNowStart &&
+          appointmentDateTime < oneHourFromNowEnd
+        ) {
+          console.log(`⏱ Match found for ${patient.name}`);
           jobs.push(sendReminder(patient, appointment));
         }
       }
@@ -129,12 +142,17 @@ cron.schedule("* * * * *", async () => {
 
     if (jobs.length) {
       await Promise.allSettled(jobs);
-      console.log(`✅ All reminders processed at ${new Date().toLocaleTimeString()}`);
+      console.log(`✅ Processed ${jobs.length} reminder(s)`);
     } else {
       console.log("ℹ No appointments matched the 1-hour window");
     }
 
   } catch (error) {
     console.error("❌ Reminder Cron Error:", error.message);
+  } finally {
+    isRunning = false;
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log(`⏳ Reminder job completed in ${duration}s`);
   }
+
 });
