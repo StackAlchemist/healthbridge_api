@@ -184,6 +184,8 @@ export const bookAppointment = async (req, res) => {
       patientName: patient.name,
       patientComplaint: complaint,
       appointmentDate: dateObj,
+      patientGender: patient.gender,
+      patientDateOfBirth: patient.dob,
       appointmentTime,
       appointmentStatus: "pending"
     };
