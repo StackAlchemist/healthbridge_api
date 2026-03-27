@@ -247,7 +247,7 @@ export const getApppointsByDoctorId = async (req, res) => {
 
 export const getAppointments = async (req, res) => {
   try {
-    const doctorId = req.body.doctorId || req.params.doctorId || req.query.doctorId; 
+    const doctorId = req.query.doctorId || req.params.doctorId || req.body.doctorId; 
     
     // Find the doctor by ID
     const doctor = await Doctor.findById(doctorId);
